@@ -6,51 +6,40 @@
   <title>API Demo – FF FaceSwap</title>
 </head>
 <body>
-  <h1>API Demo: gọi Space bằng @gradio/client</h1>
-  <p>
-    Ví dụ dưới đây kết nối tới <code>freefirehay/ff_faceswap</code> và liệt kê routes;
-    sau đó gọi thử một endpoint (đổi <code>/predict_2img</code> sang route thật của bạn).
-  </p>
-
+  <button id="btn">Kết nối & xem routes</button>
   <pre id="log" style="white-space:pre-wrap;background:#111;color:#0f0;padding:12px;border-radius:8px;max-width:900px;"></pre>
 
   <script type="module">
     import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/+esm";
 
-    const log = (msg) => {
-      document.getElementById("log").textContent += `${msg}\n`;
-    };
+    const log = (m) => { document.getElementById("log").textContent += m + "\n"; };
 
-    (async () => {
+    async function run() {
       try {
-        // 1) Kết nối bằng "repo id" là cách bền vững nhất
-        const app = await Client.connect("freefirehay/ff_faceswap");
+        const app = await Client.connect("freefirehay/ff_faceswap"); // hoặc URL Space
         log("✅ Connected to Space: freefirehay/ff_faceswap");
-
-        // 2) Xem API (routes, schema, inputs/outputs)
         const info = await app.view_api();
         log("=== API ROUTES ===");
         log(JSON.stringify(info, null, 2));
 
-        // 3) Gọi thử endpoint đặt tên (ví dụ '/predict_2img').
-        //    THAY THẾ '/predict_2img' BẰNG ROUTE THỰC TẾ CỦA BẠN.
-        //    Input tuỳ app của bạn (vd: 2 ảnh + tuỳ chọn). Dưới đây là skeleton.
+        // Ví dụ gọi endpoint (đổi '/predict_2img' và tham số theo schema thật):
         /*
         const result = await app.predict("/predict_2img", {
-          // đặt key theo 'param_name' trong schema của view_api()
-          // ví dụ:
-          // "source_img": await (await fetch("source.jpg")).blob(),
-          // "target_img": await (await fetch("target.jpg")).blob(),
-          // "w": 0.7,
-          // "restore_face": true,
+          // key = param_name trong view_api()
+          // source_img: await (await fetch("source.jpg")).blob(),
+          // target_img: await (await fetch("target.jpg")).blob(),
+          // w: 0.7,
+          // restore_face: true,
         });
-        log("=== PREDICT RESULT ===");
+        log("=== RESULT ===");
         log(JSON.stringify(result, null, 2));
         */
-      } catch (err) {
-        log("❌ ERROR: " + (err?.message || err));
+      } catch (e) {
+        log("❌ " + (e?.message || e));
       }
-    })();
+    }
+
+    document.getElementById("btn").addEventListener("click", run);
   </script>
 </body>
 </html>
