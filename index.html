@@ -2,121 +2,117 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>FF FaceSwap – Powered by Hugging Face Space</title>
-  <meta name="description" content="Free Fire FaceSwap tool – giao diện và tính năng y hệt Space trên Hugging Face." />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FF FaceSwap – Demo</title>
 
-  <!-- Gradio web component: giữ đúng version khớp Space -->
+  <!-- Nhúng Gradio Space -->
   <script type="module" src="https://gradio.s3-us-west-2.amazonaws.com/5.45.0/gradio.js"></script>
 
+  <!-- Font nhẹ nhàng, có fallback -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+
   <style>
-    :root { color-scheme: light dark; }
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      overflow-x: hidden; /* chặn kéo ngang */
-      -webkit-text-size-adjust: 100%;
-    }
-    body {
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
-      background: #f8fafc;
+    /* ============ Reset nhỏ gọn ============ */
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+
+    /* Biến màu mặc định (light) */
+    :root{
+      --bg: #0b1220;            /* nền trang */
+      --text: #e5e7eb;          /* màu chữ thường */
+      --title: #ffffff;         /* H1 ở nền tối */
+      --accent: #7c9cff;
+      --card: #111827;
+      --shadow: 0 8px 24px rgba(0,0,0,.25);
     }
 
-    /* Header gọn cho mobile */
-    header {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 12px;
-      border-bottom: 1px solid #e5e7eb;
-      background: #fff;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
-    header img { width: 24px; height: 24px; }
-    header h1 {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 600;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    /* Nếu user ở môi trường sáng -> đổi màu để H1 không trắng trên nền trắng */
+    @media (prefers-color-scheme: light) {
+      :root{
+        --bg: #0b1220;          /* vẫn dùng nền tối cho toàn trang để nhất quán */
+        --text: #e5e7eb;
+        --title: #ffffff;       /* H1 trắng trên nền tối */
+      }
     }
 
-    /* Container mobile-first: bỏ max-width cố định */
-    main {
-      width: 100%;
-      margin: 0;
-      padding: 0;
-      display: block;
-    }
-    .app-wrap {
-      width: 100%;
-      min-height: 100dvh; /* tốt cho mobile browsers */
-      background: #f8fafc;
+    body{
+      background: var(--bg);
+      color: var(--text);
     }
 
-    /* Quan trọng: ép gradio-app full-bleed, không tràn ngang */
+    /* ============ Header ============ */
+    .header{
+      position: relative;
+      padding: 24px 12px 12px;
+      background:
+        radial-gradient(60% 100% at 0% 0%, rgba(124,156,255,.25), transparent 60%),
+        radial-gradient(40% 100% at 100% 0%, rgba(76,201,240,.20), transparent 60%),
+        linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,0) 60%);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+
+    .container{
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 0 12px;
+    }
+
+    h1{
+      margin: 0 0 6px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: .2px;
+      /* Quan trọng: đảm bảo luôn thấy được tiêu đề */
+      color: var(--title);
+      text-shadow: 0 1px 0 rgba(0,0,0,.35);
+    }
+
+    .subtitle{
+      margin: 4px 0 14px;
+      opacity: .9;
+      font-weight: 500;
+    }
+
+    /* ============ Khung nhúng Space ============ */
+    .frame{
+      max-width: 1180px;
+      margin: 14px auto 40px;
+      padding: 0 12px 24px;
+    }
+
     gradio-app {
+      width: 100%;
       display: block;
-      width: 100% !important;
-      max-width: 100% !important;
-      height: auto;            /* cho phép tự cao theo nội dung */
-      contain: content;        /* tối ưu render, tránh tràn */
+      min-height: 70vh;       /* để tránh nháy khi đang tải */
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
     }
 
-    /* Phần fallback */
-    .fallback {
-      padding: 16px;
-      color: #334155;
-      font-size: 14px;
-      display: none;
-    }
-
-    /* Tinh chỉnh nhỏ cho tablet/desktop */
-    @media (min-width: 768px) {
-      header h1 { font-size: 16px; }
-      header img { width: 28px; height: 28px; }
+    /* Mobile tweak */
+    @media (max-width: 640px){
+      .header{ padding: 20px 8px 10px; }
+      h1{ font-size: 1.35rem; }
+      .subtitle{ font-size: .95rem; }
+      .frame{ padding: 0 8px 18px; }
     }
   </style>
 </head>
 <body>
-  <div class="app-wrap">
-    <header>
-      <img alt="FF" src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" />
-      <h1>Biến Hình Phiên Bản Free Fire</h1>
-    </header>
+  <header class="header">
+    <div class="container">
+      <h1>⚡ FF FaceSwap – Demo</h1>
+      <p class="subtitle">Nhúng trực tiếp Space Hugging Face vào GitHub Pages • giao diện tối ưu cho desktop & mobile</p>
+    </div>
+  </header>
 
-    <main>
-      <!-- Embed Space: giữ nguyên UI/tính năng, đã ép full-width -->
-      <gradio-app src="https://freefirehay-ff-faceswap.hf.space"></gradio-app>
-
-      <!-- Fallback nếu web component không load -->
-      <div class="fallback" id="fallback">
-        Không tải được thành phần nhúng. Mở trực tiếp:
-        <a href="https://freefirehay-ff-faceswap.hf.space" target="_blank" rel="noopener">Space FF FaceSwap</a>.
-      </div>
-    </main>
-  </div>
-
-  <script>
-    // Fallback nhẹ khi custom element không sẵn sàng
-    (async () => {
-      try {
-        if (customElements && customElements.whenDefined) {
-          await customElements.whenDefined("gradio-app");
-        }
-      } catch {
-        document.getElementById("fallback").style.display = "block";
-      }
-    })();
-
-    // Fix hiếm gặp: nếu nội dung bên trong set min-width lớn -> đảm bảo body không tràn
-    window.addEventListener("resize", () => { document.documentElement.style.overflowX = "hidden"; });
-  </script>
+  <main class="frame">
+    <!-- Thay bằng Space của bạn -->
+    <gradio-app src="https://freefirehay-ff-faceswap.hf.space"></gradio-app>
+  </main>
 </body>
 </html>
