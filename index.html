@@ -2,189 +2,301 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FF Faceswap – Frontend</title>
+  <title>FF Faceswap – Proxy to Hugging Face Space</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Gradio Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@gradio/client/dist/index.min.js"></script>
+
   <style>
-    :root{
-      --bg:#0f1115; --card:#1a1f29; --muted:#8692a6; --accent:#ff7a00; --text:#e8ecf1; --border:#2a3342;
+    /* ===== Force Dark + High Contrast ===== */
+    :root {
+      color-scheme: dark;
+      --bg: #0e1116;
+      --panel: #151a22;
+      --panel-2: #1a2230;
+      --text: #e8eef9;
+      --muted: #aab7cf;
+      --brand: #f97316; /* orange */
+      --ok: #22c55e;    /* green */
+      --danger: #ef4444;/* red */
+      --border: #243041;
     }
-    html,body{height:100%}
-    body{
-      margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:var(--bg); color:var(--text);
+    html, body {
+      margin: 0; padding: 0;
+      background: var(--bg); color: var(--text);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     }
-    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
-    h1{font-size:22px;margin:6px 0 18px}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .card{
-      background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;
+    a { color: #60a5fa; text-decoration: none; }
+    a:hover{ text-decoration: underline; }
+
+    .container {
+      max-width: 1150px;
+      margin: 18px auto 48px;
+      padding: 0 12px;
     }
-    .label{font-size:13px;color:var(--muted);margin:0 0 8px}
-    .uploader{display:flex;align-items:center;gap:12px}
-    .file{flex:1;background:#0b0e13;border:1px dashed var(--border);padding:10px;border-radius:10px}
-    input[type=file]{width:100%;color:var(--muted)}
-    .preview{
-      margin-top:10px;display:block;width:100%;max-height:560px;object-fit:contain;
-      border:1px solid var(--border);border-radius:10px;background:#0b0e13;
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
     }
-    .btn{
-      display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:10px;border:none;
-      background:var(--accent); color:#000; font-weight:700; cursor:pointer;
-      box-shadow:0 2px 0 #0003;
+    .card h3 { margin: 6px 6px 10px; font-weight: 600; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--brand); color: #fff;
+      border: 0; border-radius: 10px;
+      padding: 12px 16px; cursor: pointer; font-weight: 600;
+      box-shadow: 0 0 0 1px #000 inset;
     }
-    .btn:disabled{opacity:.6;cursor:not-allowed}
-    .row{display:flex;align-items:center;gap:10px}
-    .muted{color:var(--muted);font-size:14px}
-    .result{
-      width:100%;max-height:850px;object-fit:contain;border:1px solid var(--border);
-      border-radius:12px;background:#0b0e13;
+    .btn:hover{ filter: brightness(1.05); }
+    .btn:disabled{ opacity: .6; cursor: not-allowed; }
+    .btn-secondary{ background: var(--panel-2); color: var(--text); }
+    .btn-secondary:hover{ filter: brightness(1.04); }
+    .muted { color: var(--muted); }
+    .status { margin: 8px 0 0; min-height: 24px; font-weight: 600; }
+    .ok { color: var(--ok); } .err { color: var(--danger); }
+
+    .drop {
+      background: #0b0e13; border: 1px dashed var(--border);
+      border-radius: 10px; min-height: 340px;
+      display: grid; place-items: center; text-align: center; padding: 8px;
+      color: var(--muted);
     }
-    .footer{margin:18px 0;color:var(--muted);font-size:12px;text-align:center}
-    a{color:#9cc2ff}
+    .drop img { max-width: 100%; border-radius: 8px; display: block; }
+    .thumbs {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px;
+      overflow-x: auto; padding-bottom: 4px;
+    }
+    .thumb {
+      position: relative; height: 86px; border-radius: 8px; overflow: hidden;
+      border: 1px solid var(--border); background: #000;
+      cursor: pointer;
+    }
+    .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .thumb:hover::after {
+      content: "Chọn"; position: absolute; inset: 0; display: grid; place-items: center;
+      background: rgba(0,0,0,.45); color: #fff; font-weight: 700;
+    }
+    .hidden { display: none; }
+    .footer { margin-top: 36px; text-align: center; color: var(--muted); }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>Faceswap ➜ CodeFormer (2 ảnh) – chạy qua Hugging Face Space</h1>
+  <div class="container">
+    <h2 style="margin:0 0 10px; font-weight:700;">FF Faceswap – Client (GitHub Pages)</h2>
+    <div class="muted" style="margin-bottom:12px;">
+      Nguồn xử lý: <code id="space-url"></code> • Endpoint: <code id="space-route">đang dò…</code>
+    </div>
 
-    <div class="grid">
-      <!-- CỘT TRÁI: ẢNH IN-GAME (target) -->
+    <!-- ===== In-game library (optional) ===== -->
+    <div id="gallery-card" class="card hidden">
+      <h3>Chọn ảnh in-game có sẵn</h3>
+      <div class="thumbs" id="thumbs"></div>
+      <div class="muted" style="margin-top:6px;">
+        Mẹo: bạn có thể thay danh sách ảnh bằng cách chỉnh mảng <code>PRESET_IMAGES</code> trong file này.
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:14px;">
       <div class="card">
-        <div class="label">Ảnh MỤC TIÊU (in-game)</div>
-        <div class="uploader">
-          <div class="file"><input id="fileTarget" type="file" accept="image/*"></div>
-          <button class="btn" id="btnPickTarget" type="button">Chọn tệp</button>
+        <h3>Ảnh MỤC TIÊU (in-game)</h3>
+        <div id="targetDrop" class="drop">
+          <div>
+            <div class="muted">Kéo thả ảnh vào đây hoặc chọn tệp</div>
+            <input id="targetFile" type="file" accept="image/*" style="margin-top:8px;" />
+          </div>
         </div>
-        <img id="previewTarget" class="preview" alt="">
       </div>
 
-      <!-- CỘT PHẢI: ẢNH NGUỒN (real-face) + KẾT QUẢ -->
       <div class="card">
-        <div class="label">Ảnh NGUỒN (real face)</div>
-        <div class="uploader">
-          <div class="file"><input id="fileReal" type="file" accept="image/*"></div>
-          <button class="btn" id="btnPickReal" type="button">Chọn tệp</button>
+        <h3>Kết quả</h3>
+        <div id="resultDrop" class="drop">
+          <div class="muted">Kết quả sẽ hiển thị ở đây</div>
         </div>
-        <img id="previewReal" class="preview" alt="">
+        <div class="row" style="margin-top:10px;">
+          <button id="runBtn" class="btn">▶ Chạy</button>
+          <a id="dlBtn" class="btn btn-secondary" download="result.png" href="javascript:void(0)">Tải ảnh</a>
+        </div>
+        <div id="status" class="status"></div>
       </div>
     </div>
 
-    <div class="row" style="margin:16px 0">
-      <button class="btn" id="btnRun" type="button">▶ Chạy</button>
-      <div class="muted" id="status">Sẵn sàng.</div>
-    </div>
-
-    <div class="card">
-      <div class="label">Kết quả</div>
-      <img id="imgOut" class="result" alt="">
-      <div class="row" style="margin-top:10px">
-        <a id="dlLink" class="btn" download="result.png" style="text-decoration:none">Tải ảnh</a>
-        <span class="muted" id="fileInfo"></span>
+    <div class="card" style="margin-top:14px;">
+      <h3>Ảnh NGUỒN (real face)</h3>
+      <div id="realDrop" class="drop">
+        <div>
+          <div class="muted">Kéo thả ảnh vào đây hoặc chọn tệp</div>
+          <input id="realFile" type="file" accept="image/*" style="margin-top:8px;" />
+        </div>
       </div>
     </div>
 
-    <div class="footer">Frontend tĩnh trên GitHub Pages • Backend: Hugging Face Space</div>
+    <div class="footer">© Your Brand</div>
   </div>
 
-  <!-- KẾT NỐI VỚI SPACE BẰNG @gradio/client -->
-  <script type="module">
-    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/+esm";
+<script>
+/* ===================== CONFIG ===================== */
+const SPACE_URL = "https://freefirehay-ff-faceswap.hf.space";
+/* Nếu bạn muốn có thư viện ảnh in-game, đặt các URL (png/jpg) vào mảng dưới: */
+const PRESET_IMAGES = [
+  // Ví dụ:
+  // "https://huggingface.co/spaces/freefirehay/ff_faceswap/resolve/main/presets/boy_ingame2.jpg",
+  // "https://huggingface.co/spaces/freefirehay/ff_faceswap/resolve/main/presets/girl_ingame1.png",
+];
+/* ================================================== */
 
-    const SPACE_URL = "https://freefirehay-ff-faceswap.hf.space";
-    const $ = s => document.querySelector(s);
-    const fileTarget = $("#fileTarget");
-    const fileReal   = $("#fileReal");
-    const btnTarget  = $("#btnPickTarget");
-    const btnReal    = $("#btnPickReal");
-    const prevT      = $("#previewTarget");
-    const prevR      = $("#previewReal");
-    const btnRun     = $("#btnRun");
-    const statusEl   = $("#status");
-    const outImg     = $("#imgOut");
-    const dlLink     = $("#dlLink");
-    const fileInfo   = $("#fileInfo");
+document.getElementById("space-url").textContent = SPACE_URL;
 
-    // nút chọn file đẹp
-    btnTarget.onclick = () => fileTarget.click();
-    btnReal.onclick   = () => fileReal.click();
+/* ===== Helpers ===== */
+const $ = (id) => document.getElementById(id);
+const canvasFromImage = (img, maxSize=1920) => {
+  const cnv = document.createElement('canvas');
+  let { width:w, height:h } = img;
+  const s = Math.max(w, h);
+  if (s > maxSize) { const r = maxSize / s; w = w*r; h = h*r; }
+  cnv.width = Math.round(w); cnv.height = Math.round(h);
+  const ctx = cnv.getContext('2d');
+  ctx.drawImage(img, 0, 0, cnv.width, cnv.height);
+  return cnv;
+};
+const fileFromCanvas = (cnv, name="image.png") =>
+  new Promise((res)=> cnv.toBlob(b=> res(new File([b], name, {type:"image/png"})), "image/png", 0.92));
+const blobURL = (b)=> URL.createObjectURL(b);
 
-    // preview
-    fileTarget.onchange = () => {
-      const f = fileTarget.files?.[0];
-      if (!f) return prevT.src = "";
-      prevT.src = URL.createObjectURL(f);
-    };
-    fileReal.onchange = () => {
-      const f = fileReal.files?.[0];
-      if (!f) return prevR.src = "";
-      prevR.src = URL.createObjectURL(f);
-    };
+/* ===== State ===== */
+let client = null;
+let apiRoutes = null;
+let route2img = null;
+let realImageFile = null;    // File
+let targetImageFile = null;  // File
 
-    let client = null;
-    let route  = null; // path api
-
-    async function connect() {
-      status("Đang kết nối Space…");
-      // kiểm tra /config để báo lỗi sớm nếu URL sai / Space ngủ
-      const cfg = await fetch(`${SPACE_URL}/config`);
-      if (!cfg.ok) throw new Error(`/config ${cfg.status}`);
-      client = await Client.connect(SPACE_URL);
-      // lấy danh sách route và tìm endpoint 2 ảnh
-      const api = await client.view_api();
-      // ưu tiên endpoint tên predict_2img nếu có
-      route = Object.keys(api).find(p => p.includes("predict_2img"));
-      if (!route) {
-        // fallback: chọn endpoint có 2 input type=image
-        route = Object.keys(api).find(p => (api[p]?.inputs || []).filter(i => i.type === "image").length >= 2);
-      }
-      if (!route) throw new Error("Không tìm thấy endpoint 2 ảnh trong /api!");
-      console.log("Using route:", route);
-      status("Sẵn sàng.");
-    }
-
-    function status(t){ statusEl.textContent = t; }
-    function toURL(x){
-      // @gradio/client: ảnh output thường là Blob
-      if (x instanceof Blob) return URL.createObjectURL(x);
-      if (typeof x === "string") return x; // data: URL hoặc link tạm
-      if (x?.url) return x.url;
-      return null;
-    }
-
-    async function runPredict() {
-      const src = fileReal.files?.[0];
-      const tgt = fileTarget.files?.[0];
-      if (!src || !tgt) return alert("Hãy chọn đủ 2 ảnh.");
-
-      btnRun.disabled = true;
-      status("Đang xử lý…");
-
-      try {
-        const result = await client.predict(route, [src, tgt]); // gọi theo vị trí (2 ảnh)
-        const out = result?.data?.[0];
-        const url = toURL(out);
-        if (!url) throw new Error("Output không hợp lệ.");
-        outImg.src = url;
-        dlLink.href = url;
-        status("Hoàn tất ✅");
-        fileInfo.textContent = "";
-      } catch (e){
-        console.error(e);
-        alert("Lỗi khi gọi API. Kiểm tra console để biết chi tiết.");
-        status("Lỗi!");
-      } finally {
-        btnRun.disabled = false;
-      }
-    }
-
-    btnRun.onclick = runPredict;
-
-    // Kết nối khi mở trang
-    connect().catch(e=>{
-      console.error(e);
-      alert("Không kết nối được Space. Hãy chắc Space đang chạy.");
-      status("Không kết nối được Space.");
+/* ===== Build optional gallery ===== */
+(function buildGallery(){
+  const wrap = $("gallery-card");
+  if (!PRESET_IMAGES || PRESET_IMAGES.length === 0) return; // ẩn nếu không config
+  wrap.classList.remove("hidden");
+  const thumbs = $("thumbs");
+  PRESET_IMAGES.forEach((url, idx) => {
+    const d = document.createElement("div");
+    d.className = "thumb";
+    const img = document.createElement("img");
+    img.src = url; img.alt = "preset_"+idx;
+    d.appendChild(img);
+    d.addEventListener("click", async()=>{
+      const image = new Image();
+      image.crossOrigin = "anonymous";
+      image.onload = async () => {
+        const cnv = canvasFromImage(image, 1600); // “preview nhẹ”
+        targetImageFile = await fileFromCanvas(cnv, "target.png");
+        $("targetDrop").innerHTML = `<img src="${cnv.toDataURL("image/png")}">`;
+      };
+      image.onerror = ()=> alert("Không tải được ảnh preset.");
+      image.src = url;
     });
-  </script>
+    thumbs.appendChild(d);
+  });
+})();
+
+/* ===== Drag & drop & file input ===== */
+function enableDrop(zoneId, setFile){
+  const zone = $(zoneId);
+  zone.addEventListener("dragover", e => { e.preventDefault(); zone.style.borderColor = "#4b5563"; });
+  zone.addEventListener("dragleave", e => { zone.style.borderColor = "var(--border)"; });
+  zone.addEventListener("drop", async e => {
+    e.preventDefault(); zone.style.borderColor = "var(--border)";
+    const file = e.dataTransfer.files?.[0]; if (!file) return;
+    const img = new Image();
+    img.onload = async ()=>{
+      const cnv = canvasFromImage(img, 1600);
+      const f = await fileFromCanvas(cnv, "image.png");
+      setFile(f);
+      zone.innerHTML = `<img src="${cnv.toDataURL("image/png")}">`;
+    };
+    img.onerror = ()=> alert("File ảnh không hợp lệ.");
+    img.src = URL.createObjectURL(file);
+  });
+}
+enableDrop("targetDrop", f => targetImageFile = f);
+enableDrop("realDrop",   f => realImageFile   = f);
+
+$("targetFile").addEventListener("change", async e=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const img = new Image(); img.onload = async ()=>{
+    const cnv = canvasFromImage(img, 1600);
+    targetImageFile = await fileFromCanvas(cnv, "target.png");
+    $("targetDrop").innerHTML = `<img src="${cnv.toDataURL("image/png")}">`;
+  };
+  img.src = URL.createObjectURL(f);
+});
+$("realFile").addEventListener("change", async e=>{
+  const f = e.target.files?.[0]; if(!f) return;
+  const img = new Image(); img.onload = async ()=>{
+    const cnv = canvasFromImage(img, 1600);
+    realImageFile = await fileFromCanvas(cnv, "real.png");
+    $("realDrop").innerHTML = `<img src="${cnv.toDataURL("image/png")}">`;
+  };
+  img.src = URL.createObjectURL(f);
+});
+
+/* ===== Connect to Space & resolve /predict_2img ===== */
+async function connect(){
+  $("space-route").textContent = "đang dò…";
+  client = await window.gradio.Client.connect(SPACE_URL);
+  apiRoutes = await client.view_api();
+
+  // 1) ưu tiên route có tên predict_2img
+  route2img = Object.keys(apiRoutes).find(p => p.includes("predict_2img"));
+
+  // 2) fallback: tìm route có ≥2 input type = image
+  if (!route2img) {
+    route2img = Object.keys(apiRoutes).find(p => {
+      const ins = apiRoutes[p]?.inputs || [];
+      return ins.filter(i => i.type === "image").length >= 2;
+    });
+  }
+  if (!route2img) {
+    console.warn("Routes available:", apiRoutes);
+    throw new Error("Không tìm thấy endpoint 2 ảnh trong /api!");
+  }
+  $("space-route").textContent = route2img;
+}
+connect().catch(err=>{
+  $("space-route").textContent = "lỗi";
+  console.error(err);
+  alert("Không kết nối được Space. Hãy chắc Space đang chạy.");
+});
+
+/* ===== Run predict ===== */
+$("runBtn").addEventListener("click", async ()=>{
+  const status = $("status");
+  try{
+    if(!client || !route2img) throw new Error("Chưa kết nối Space.");
+    if(!realImageFile || !targetImageFile) { alert("Vui lòng chọn đủ 2 ảnh."); return; }
+    status.textContent = "Đang xử lý…"; status.className = "status";
+
+    // Gọi API 2-ảnh: trả [result_image, result_file]
+    const res = await client.predict(route2img, [realImageFile, targetImageFile]);
+    // Gradio client trả .data (mảng)
+    const outImg = res?.data?.[0];   // base64/URL
+    const outFile = res?.data?.[1];  // URL (nếu app trả file)
+
+    if(!outImg){
+      status.textContent = "Lỗi: không nhận được ảnh kết quả."; status.className = "status err";
+      return;
+    }
+    $("resultDrop").innerHTML = `<img src="${outImg}">`;
+    if(outFile){ $("dlBtn").href = outFile; } else { $("dlBtn").href = outImg; }
+    status.textContent = "Xong!"; status.className = "status ok";
+  }catch(e){
+    console.error(e);
+    $("status").textContent = "Lỗi khi gọi API. Kiểm tra console để biết chi tiết.";
+    $("status").className = "status err";
+    alert("Lỗi khi gọi API. Kiểm tra console để biết chi tiết.");
+  }
+});
+</script>
 </body>
 </html>
