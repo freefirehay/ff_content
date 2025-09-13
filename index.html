@@ -1,76 +1,190 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <title>FF Faceswap Frontend</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FF Faceswap – Frontend</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
-      text-align: center;
+    :root{
+      --bg:#0f1115; --card:#1a1f29; --muted:#8692a6; --accent:#ff7a00; --text:#e8ecf1; --border:#2a3342;
     }
-    .container { margin: 20px auto; max-width: 800px; }
-    input[type="file"] { margin: 10px; }
-    img { max-width: 100%; margin-top: 20px; border: 2px solid #444; }
-    button {
-      padding: 10px 20px;
-      background: orange;
-      color: black;
-      font-weight: bold;
-      border: none;
-      cursor: pointer;
-      margin-top: 10px;
+    html,body{height:100%}
+    body{
+      margin:0; font-family:system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:var(--bg); color:var(--text);
     }
+    .wrap{max-width:1100px;margin:24px auto;padding:0 16px}
+    h1{font-size:22px;margin:6px 0 18px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .card{
+      background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px;
+    }
+    .label{font-size:13px;color:var(--muted);margin:0 0 8px}
+    .uploader{display:flex;align-items:center;gap:12px}
+    .file{flex:1;background:#0b0e13;border:1px dashed var(--border);padding:10px;border-radius:10px}
+    input[type=file]{width:100%;color:var(--muted)}
+    .preview{
+      margin-top:10px;display:block;width:100%;max-height:560px;object-fit:contain;
+      border:1px solid var(--border);border-radius:10px;background:#0b0e13;
+    }
+    .btn{
+      display:inline-flex;align-items:center;gap:8px;padding:12px 18px;border-radius:10px;border:none;
+      background:var(--accent); color:#000; font-weight:700; cursor:pointer;
+      box-shadow:0 2px 0 #0003;
+    }
+    .btn:disabled{opacity:.6;cursor:not-allowed}
+    .row{display:flex;align-items:center;gap:10px}
+    .muted{color:var(--muted);font-size:14px}
+    .result{
+      width:100%;max-height:850px;object-fit:contain;border:1px solid var(--border);
+      border-radius:12px;background:#0b0e13;
+    }
+    .footer{margin:18px 0;color:var(--muted);font-size:12px;text-align:center}
+    a{color:#9cc2ff}
   </style>
 </head>
 <body>
-  <div class="container">
-    <h2>Free Fire Faceswap (Frontend)</h2>
-    <p>Tải ảnh của bạn và gửi tới Hugging Face Space</p>
+  <div class="wrap">
+    <h1>Faceswap ➜ CodeFormer (2 ảnh) – chạy qua Hugging Face Space</h1>
 
-    <input type="file" id="inputImg" />
-    <button onclick="runPredict()">▶ Chạy</button>
+    <div class="grid">
+      <!-- CỘT TRÁI: ẢNH IN-GAME (target) -->
+      <div class="card">
+        <div class="label">Ảnh MỤC TIÊU (in-game)</div>
+        <div class="uploader">
+          <div class="file"><input id="fileTarget" type="file" accept="image/*"></div>
+          <button class="btn" id="btnPickTarget" type="button">Chọn tệp</button>
+        </div>
+        <img id="previewTarget" class="preview" alt="">
+      </div>
 
-    <p id="status"></p>
-    <img id="resultImg" />
+      <!-- CỘT PHẢI: ẢNH NGUỒN (real-face) + KẾT QUẢ -->
+      <div class="card">
+        <div class="label">Ảnh NGUỒN (real face)</div>
+        <div class="uploader">
+          <div class="file"><input id="fileReal" type="file" accept="image/*"></div>
+          <button class="btn" id="btnPickReal" type="button">Chọn tệp</button>
+        </div>
+        <img id="previewReal" class="preview" alt="">
+      </div>
+    </div>
+
+    <div class="row" style="margin:16px 0">
+      <button class="btn" id="btnRun" type="button">▶ Chạy</button>
+      <div class="muted" id="status">Sẵn sàng.</div>
+    </div>
+
+    <div class="card">
+      <div class="label">Kết quả</div>
+      <img id="imgOut" class="result" alt="">
+      <div class="row" style="margin-top:10px">
+        <a id="dlLink" class="btn" download="result.png" style="text-decoration:none">Tải ảnh</a>
+        <span class="muted" id="fileInfo"></span>
+      </div>
+    </div>
+
+    <div class="footer">Frontend tĩnh trên GitHub Pages • Backend: Hugging Face Space</div>
   </div>
 
-  <script>
-    const SPACE_URL = "https://freefirehay-ff-faceswap.hf.space";  // link đúng
+  <!-- KẾT NỐI VỚI SPACE BẰNG @gradio/client -->
+  <script type="module">
+    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/+esm";
+
+    const SPACE_URL = "https://freefirehay-ff-faceswap.hf.space";
+    const $ = s => document.querySelector(s);
+    const fileTarget = $("#fileTarget");
+    const fileReal   = $("#fileReal");
+    const btnTarget  = $("#btnPickTarget");
+    const btnReal    = $("#btnPickReal");
+    const prevT      = $("#previewTarget");
+    const prevR      = $("#previewReal");
+    const btnRun     = $("#btnRun");
+    const statusEl   = $("#status");
+    const outImg     = $("#imgOut");
+    const dlLink     = $("#dlLink");
+    const fileInfo   = $("#fileInfo");
+
+    // nút chọn file đẹp
+    btnTarget.onclick = () => fileTarget.click();
+    btnReal.onclick   = () => fileReal.click();
+
+    // preview
+    fileTarget.onchange = () => {
+      const f = fileTarget.files?.[0];
+      if (!f) return prevT.src = "";
+      prevT.src = URL.createObjectURL(f);
+    };
+    fileReal.onchange = () => {
+      const f = fileReal.files?.[0];
+      if (!f) return prevR.src = "";
+      prevR.src = URL.createObjectURL(f);
+    };
+
+    let client = null;
+    let route  = null; // path api
+
+    async function connect() {
+      status("Đang kết nối Space…");
+      // kiểm tra /config để báo lỗi sớm nếu URL sai / Space ngủ
+      const cfg = await fetch(`${SPACE_URL}/config`);
+      if (!cfg.ok) throw new Error(`/config ${cfg.status}`);
+      client = await Client.connect(SPACE_URL);
+      // lấy danh sách route và tìm endpoint 2 ảnh
+      const api = await client.view_api();
+      // ưu tiên endpoint tên predict_2img nếu có
+      route = Object.keys(api).find(p => p.includes("predict_2img"));
+      if (!route) {
+        // fallback: chọn endpoint có 2 input type=image
+        route = Object.keys(api).find(p => (api[p]?.inputs || []).filter(i => i.type === "image").length >= 2);
+      }
+      if (!route) throw new Error("Không tìm thấy endpoint 2 ảnh trong /api!");
+      console.log("Using route:", route);
+      status("Sẵn sàng.");
+    }
+
+    function status(t){ statusEl.textContent = t; }
+    function toURL(x){
+      // @gradio/client: ảnh output thường là Blob
+      if (x instanceof Blob) return URL.createObjectURL(x);
+      if (typeof x === "string") return x; // data: URL hoặc link tạm
+      if (x?.url) return x.url;
+      return null;
+    }
 
     async function runPredict() {
-      const fileInput = document.getElementById("inputImg");
-      if (!fileInput.files[0]) {
-        alert("Hãy chọn một ảnh!");
-        return;
-      }
-      const status = document.getElementById("status");
-      status.innerText = "Đang xử lý...";
+      const src = fileReal.files?.[0];
+      const tgt = fileTarget.files?.[0];
+      if (!src || !tgt) return alert("Hãy chọn đủ 2 ảnh.");
 
-      const formData = new FormData();
-      formData.append("data", fileInput.files[0]);
+      btnRun.disabled = true;
+      status("Đang xử lý…");
 
       try {
-        const res = await fetch(`${SPACE_URL}/run/predict`, {
-          method: "POST",
-          body: formData,
-        });
-        const json = await res.json();
-
-        // output thường nằm ở json.data[0]
-        if (json && json.data && json.data[0]) {
-          document.getElementById("resultImg").src = json.data[0];
-          status.innerText = "Hoàn tất ✅";
-        } else {
-          status.innerText = "❌ Không nhận được kết quả hợp lệ";
-          console.error(json);
-        }
-      } catch (err) {
-        console.error(err);
-        status.innerText = "❌ Lỗi khi gọi API";
+        const result = await client.predict(route, [src, tgt]); // gọi theo vị trí (2 ảnh)
+        const out = result?.data?.[0];
+        const url = toURL(out);
+        if (!url) throw new Error("Output không hợp lệ.");
+        outImg.src = url;
+        dlLink.href = url;
+        status("Hoàn tất ✅");
+        fileInfo.textContent = "";
+      } catch (e){
+        console.error(e);
+        alert("Lỗi khi gọi API. Kiểm tra console để biết chi tiết.");
+        status("Lỗi!");
+      } finally {
+        btnRun.disabled = false;
       }
     }
+
+    btnRun.onclick = runPredict;
+
+    // Kết nối khi mở trang
+    connect().catch(e=>{
+      console.error(e);
+      alert("Không kết nối được Space. Hãy chắc Space đang chạy.");
+      status("Không kết nối được Space.");
+    });
   </script>
 </body>
 </html>
