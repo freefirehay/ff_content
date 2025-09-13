@@ -2,26 +2,86 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>FF FaceSwap – Powered by Hugging Face Space</title>
   <meta name="description" content="Free Fire FaceSwap tool – giao diện và tính năng y hệt Space trên Hugging Face." />
-  <!-- Web Component của Gradio: dùng đúng version như Space -->
+
+  <!-- Gradio web component: giữ đúng version khớp Space -->
   <script type="module" src="https://gradio.s3-us-west-2.amazonaws.com/5.45.0/gradio.js"></script>
+
   <style>
     :root { color-scheme: light dark; }
-    body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      overflow-x: hidden; /* chặn kéo ngang */
+      -webkit-text-size-adjust: 100%;
+    }
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+      background: #f8fafc;
+    }
+
+    /* Header gọn cho mobile */
     header {
-      padding: 12px 16px; border-bottom: 1px solid #e5e7eb;
-      display:flex; align-items:center; gap:12px; background: #fff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      background: #fff;
+      position: sticky;
+      top: 0;
+      z-index: 10;
     }
-    header img { width: 28px; height: 28px; }
-    header h1 { font-size: 16px; margin: 0; font-weight: 600; }
-    main { max-width: 1400px; margin: 0 auto; padding: 0; }
-    .app-wrap { min-height: 100vh; background: #f8fafc; }
+    header img { width: 24px; height: 24px; }
+    header h1 {
+      margin: 0;
+      font-size: 15px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Container mobile-first: bỏ max-width cố định */
+    main {
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      display: block;
+    }
+    .app-wrap {
+      width: 100%;
+      min-height: 100dvh; /* tốt cho mobile browsers */
+      background: #f8fafc;
+    }
+
+    /* Quan trọng: ép gradio-app full-bleed, không tràn ngang */
+    gradio-app {
+      display: block;
+      width: 100% !important;
+      max-width: 100% !important;
+      height: auto;            /* cho phép tự cao theo nội dung */
+      contain: content;        /* tối ưu render, tránh tràn */
+    }
+
+    /* Phần fallback */
     .fallback {
-      padding: 16px; color: #334155; font-size: 14px; display:none;
+      padding: 16px;
+      color: #334155;
+      font-size: 14px;
+      display: none;
     }
-    gradio-app { display:block; }
+
+    /* Tinh chỉnh nhỏ cho tablet/desktop */
+    @media (min-width: 768px) {
+      header h1 { font-size: 16px; }
+      header img { width: 28px; height: 28px; }
+    }
   </style>
 </head>
 <body>
@@ -30,23 +90,33 @@
       <img alt="FF" src="https://huggingface.co/front/assets/huggingface_logo-noborder.svg" />
       <h1>FF FaceSwap (embed từ Hugging Face Space)</h1>
     </header>
+
     <main>
-      <!-- NHÚNG SPACE: GIỮ Y NGUYÊN UI/TÍNH NĂNG -->
+      <!-- Embed Space: giữ nguyên UI/tính năng, đã ép full-width -->
       <gradio-app src="https://freefirehay-ff-faceswap.hf.space"></gradio-app>
 
-      <!-- Fallback hiển thị nếu trình duyệt cũ không hỗ trợ -->
+      <!-- Fallback nếu web component không load -->
       <div class="fallback" id="fallback">
-        Không tải được thành phần nhúng. Bạn có thể mở trực tiếp:
+        Không tải được thành phần nhúng. Mở trực tiếp:
         <a href="https://freefirehay-ff-faceswap.hf.space" target="_blank" rel="noopener">Space FF FaceSwap</a>.
       </div>
     </main>
   </div>
 
   <script>
-    // Fallback nhẹ cho browser cũ
-    customElements?.whenDefined?.("gradio-app").catch?.(() => {
-      document.getElementById("fallback").style.display = "block";
-    });
+    // Fallback nhẹ khi custom element không sẵn sàng
+    (async () => {
+      try {
+        if (customElements && customElements.whenDefined) {
+          await customElements.whenDefined("gradio-app");
+        }
+      } catch {
+        document.getElementById("fallback").style.display = "block";
+      }
+    })();
+
+    // Fix hiếm gặp: nếu nội dung bên trong set min-width lớn -> đảm bảo body không tràn
+    window.addEventListener("resize", () => { document.documentElement.style.overflowX = "hidden"; });
   </script>
 </body>
 </html>
