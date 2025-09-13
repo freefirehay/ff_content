@@ -1,158 +1,76 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FF Faceswap — Frontend</title>
+  <meta charset="UTF-8" />
+  <title>FF Faceswap Frontend</title>
   <style>
-    :root { color-scheme: light dark; }
-    body { font-family: system-ui, sans-serif; margin:0; background:#0b0f14; color:#e9eef5; }
-    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
-    h1 { font-size: 20px; margin-bottom: 16px; }
-    .card { background:#121821; border:1px solid #243041; border-radius:12px; padding:16px; margin-bottom:16px; }
-    label { display:block; margin:8px 0 6px; color:#cfe2ff; }
-    input[type="file"] { color:#e7f0ff; }
-    button { padding:12px 16px; border:0; border-radius:10px; background:#ff791a; color:#fff; font-weight:700; cursor:pointer; }
-    button:disabled { opacity:0.6; cursor:not-allowed; }
-    .row { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-start; }
-    .col { flex:1 1 300px; }
-    .preview { width:100%; max-height:520px; object-fit:contain; background:#0b0f14; border:1px dashed #2c3b51; border-radius:10px; }
-    .progress { margin-top:8px; color:#9fd1ff; font-style:italic; min-height: 20px; }
-    .footer { text-align:center; opacity:0.7; margin:16px 0 40px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
+      text-align: center;
+    }
+    .container { margin: 20px auto; max-width: 800px; }
+    input[type="file"] { margin: 10px; }
+    img { max-width: 100%; margin-top: 20px; border: 2px solid #444; }
+    button {
+      padding: 10px 20px;
+      background: orange;
+      color: black;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      margin-top: 10px;
+    }
   </style>
-
-  <!-- Gradio client (ESM) -->
-  <script type="module">
-    import { Client } from "https://cdn.jsdelivr.net/npm/@gradio/client/+esm";
-
-    let client;
-    let resultBlob = null;
-
-    const SPACE_URL = "https://freefirehay-ff_faceswap.hf.space/"; // runtime của Space
-    const ENDPOINT  = "/predict_2img";  // api_name đã đặt trong app.py
-
-    // Kết nối 1 lần khi trang load
-    async function connect() {
-      try {
-        client = await Client.connect(SPACE_URL);
-        console.log("Connected to", SPACE_URL);
-      } catch (e) {
-        console.error(e);
-        alert("Không kết nối được Space. Hãy chắc Space đang chạy.");
-      }
-    }
-
-    // Xem trước ảnh
-    function preview(input, imgEl) {
-      const file = input.files?.[0];
-      imgEl.src = file ? URL.createObjectURL(file) : "";
-    }
-
-    // (Tùy chọn) Nén ảnh lớn trước khi upload để nhanh hơn
-    async function compressImage(file, maxSide=1024, quality=0.9) {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.onload = () => {
-          const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
-          const canvas = document.createElement("canvas");
-          canvas.width  = Math.round(img.width  * scale);
-          canvas.height = Math.round(img.height * scale);
-          const ctx = canvas.getContext("2d");
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          canvas.toBlob((blob) => resolve(new File([blob], file.name, { type: "image/jpeg" })), "image/jpeg", quality);
-        };
-        img.src = URL.createObjectURL(file);
-      });
-    }
-
-    async function runPredict() {
-      const btn  = document.getElementById("run");
-      const prog = document.getElementById("prog");
-      const rf   = document.getElementById("realface");
-      const tg   = document.getElementById("target");
-
-      if (!client) await connect();
-      if (!rf.files?.length || !tg.files?.length) {
-        alert("Chọn đủ 2 ảnh (real + ingame)");
-        return;
-      }
-
-      btn.disabled = true;
-      prog.textContent = "Đang xử lý…";
-
-      try {
-        // NÉN NHẸ để upload nhanh hơn (tùy chọn)
-        const real_face = await compressImage(rf.files[0], 1024, 0.9);
-        const target_img = await compressImage(tg.files[0],  1024, 0.9);
-
-        const res = await client.predict(ENDPOINT, { real_face, target_img });
-        // res.data = [image, file]
-        const outImg = res?.data?.[0];
-
-        if (outImg instanceof Blob) {
-          resultBlob = outImg;
-          document.getElementById("result").src = URL.createObjectURL(outImg);
-        } else if (typeof outImg === "string") {
-          const resp = await fetch(outImg);
-          resultBlob = await resp.blob();
-          document.getElementById("result").src = outImg;
-        }
-        prog.textContent = "Xong!";
-      } catch (err) {
-        console.error(err);
-        prog.textContent = "";
-        alert("Lỗi khi gọi API. Kiểm tra console để biết chi tiết.");
-      } finally {
-        btn.disabled = false;
-      }
-    }
-
-    function downloadResult() {
-      if (!resultBlob) return;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(resultBlob);
-      a.download = "faceswap_result.png";
-      a.click();
-      URL.revokeObjectURL(a.href);
-    }
-
-    window.addEventListener("DOMContentLoaded", connect);
-    window.preview = preview;
-    window.runPredict = runPredict;
-    window.downloadResult = downloadResult;
-  </script>
 </head>
 <body>
-  <div class="wrap">
-    <h1>FF Faceswap — Frontend</h1>
+  <div class="container">
+    <h2>Free Fire Faceswap (Frontend)</h2>
+    <p>Tải ảnh của bạn và gửi tới Hugging Face Space</p>
 
-    <div class="card">
-      <div class="row">
-        <div class="col">
-          <label>Ảnh khuôn mặt (real)</label>
-          <input id="realface" type="file" accept="image/*" onchange="preview(this, document.getElementById('rfp'))" />
-          <img id="rfp" class="preview" alt="preview real" />
-        </div>
-        <div class="col">
-          <label>Ảnh mục tiêu (ingame)</label>
-          <input id="target" type="file" accept="image/*" onchange="preview(this, document.getElementById('tgp'))" />
-          <img id="tgp" class="preview" alt="preview target" />
-          <div style="margin-top:12px;">
-            <button id="run" onclick="runPredict()">▶️ Chạy</button>
-            <div id="prog" class="progress"></div>
-          </div>
-        </div>
-        <div class="col">
-          <label>Kết quả</label>
-          <img id="result" class="preview" alt="result" />
-          <div style="margin-top:8px;">
-            <button onclick="downloadResult()">Tải ảnh</button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <input type="file" id="inputImg" />
+    <button onclick="runPredict()">▶ Chạy</button>
 
-    <div class="footer">© Your Brand</div>
+    <p id="status"></p>
+    <img id="resultImg" />
   </div>
+
+  <script>
+    const SPACE_URL = "https://freefirehay-ff-faceswap.hf.space";  // link đúng
+
+    async function runPredict() {
+      const fileInput = document.getElementById("inputImg");
+      if (!fileInput.files[0]) {
+        alert("Hãy chọn một ảnh!");
+        return;
+      }
+      const status = document.getElementById("status");
+      status.innerText = "Đang xử lý...";
+
+      const formData = new FormData();
+      formData.append("data", fileInput.files[0]);
+
+      try {
+        const res = await fetch(`${SPACE_URL}/run/predict`, {
+          method: "POST",
+          body: formData,
+        });
+        const json = await res.json();
+
+        // output thường nằm ở json.data[0]
+        if (json && json.data && json.data[0]) {
+          document.getElementById("resultImg").src = json.data[0];
+          status.innerText = "Hoàn tất ✅";
+        } else {
+          status.innerText = "❌ Không nhận được kết quả hợp lệ";
+          console.error(json);
+        }
+      } catch (err) {
+        console.error(err);
+        status.innerText = "❌ Lỗi khi gọi API";
+      }
+    }
+  </script>
 </body>
 </html>
